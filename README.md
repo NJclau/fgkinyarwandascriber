@@ -97,6 +97,25 @@ streamlit run main_app_integrated.py
 
 Visit **http://localhost:8501**
 
+### Secrets Management
+
+This application uses Streamlit's secrets management to handle sensitive information like API keys. You will need to create a file at `.streamlit/secrets.toml` with the following content:
+
+```toml
+# .streamlit/secrets.toml
+
+HF_TOKEN = "hf_your_token"
+GEMINI_API_KEY = "your_gemini_key"
+GOOGLE_API = "AIzaSyCXjmr0s6zJXHL2hwUXups8PEsFkftEXPk"
+ADMIN_EMAILS = ["cyakodon@gmail.com"]
+```
+
+**Important:**
+
+*   Replace the placeholder values with your actual API keys and admin email addresses.
+*   This file should **not** be committed to version control. It is already included in the `.gitignore` file to prevent accidental exposure of your secrets.
+*   When deploying to Streamlit Cloud, you will need to add these secrets using the Streamlit Cloud dashboard.
+
 ---
 
 ## 📖 Usage Guide

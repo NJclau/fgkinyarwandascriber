@@ -4,7 +4,7 @@ import tempfile
 from datetime import datetime
 from transcriber import KinyarwandaTranscriber
 from gemini_processor import GeminiProcessor
-from admin_handler_enhanced import UserManager, AdminDashboard
+from admin_handler import UserManager, AdminDashboard
 
 # Page config
 st.set_page_config(
@@ -27,6 +27,30 @@ if 'transcription_results' not in st.session_state:
 # Initialize managers
 user_manager = UserManager()
 admin_dashboard = AdminDashboard()
+
+
+# Load secrets (safe defaults)
+GOOGLE_API = st.secrets.get("GOOGLE_API", None)
+ADMIN_EMAILS = st.secrets.get("ADMIN_EMAILS", [])
+
+# Try to inject admin emails and google api if the manager objects expose attributes/methods for that.
+try:
+    if ADMIN_EMAILS:
+        if hasattr(user_manager, "admins"):
+            user_manager.admins = ADMIN_EMAILS
+        elif hasattr(user_manager, "set_admins"):
+            user_manager.set_admins(ADMIN_EMAILS)
+except Exception:
+    pass
+
+try:
+    if GOOGLE_API:
+        if hasattr(admin_dashboard, "google_api"):
+            admin_dashboard.google_api = GOOGLE_API
+        elif hasattr(admin_dashboard, "set_google_api"):
+            admin_dashboard.set_google_api(GOOGLE_API)
+except Exception:
+    pass
 
 
 def render_login_page():
