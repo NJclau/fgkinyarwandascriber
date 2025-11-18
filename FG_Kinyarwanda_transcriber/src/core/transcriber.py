@@ -4,7 +4,7 @@ import librosa
 from pydub import AudioSegment
 from speechbrain.inference.ASR import EncoderASR
 import streamlit as st
-
+from src.config.settings import config
 
 class KinyarwandaTranscriber:
     """Kinyarwanda ASR using SpeechBrain wav2vec2-commonvoice model"""
@@ -20,7 +20,7 @@ class KinyarwandaTranscriber:
         
         try:
             # Load model with GPU support if available
-            run_opts = {"device": "cuda"} if st.secrets.get("USE_GPU", False) else {"device": "cpu"}
+            run_opts = {"device": "cuda"} if config.use_gpu else {"device": "cpu"}
             
             self.model = EncoderASR.from_hparams(
                 source="speechbrain/asr-wav2vec2-commonvoice-14-rw",

@@ -47,7 +47,7 @@ AI-powered audio transcription and analysis platform for Kinyarwanda focus group
 ```bash
 # 1. Clone repository
 git clone https://github.com/yourusername/kinyarwanda-transcriber.git
-cd kinyarwanda-transcriber
+cd kinyarwanda-transcriber/FG_Kinyarwanda_transcriber
 
 # 2. Create virtual environment
 python -m venv venv
@@ -92,7 +92,7 @@ USE_GPU = false
 ### Run Application
 
 ```bash
-streamlit run main_app_integrated.py
+streamlit run app.py
 ```
 
 Visit **http://localhost:8501**
@@ -191,21 +191,37 @@ Complete Report → Export Options
 ### Project Structure
 
 ```
-kinyarwanda-transcriber/
-├── main_app_integrated.py          # Main Streamlit app with routing
-├── admin_handler_enhanced.py       # User management & admin dashboard
-├── transcriber.py                  # SpeechBrain Wav2Vec2 transcription
-├── gemini_processor.py             # Gemini API integration
-├── requirements.txt                # Python dependencies
-├── users_database.json             # Approved users (auto-created)
-├── pending_users.json              # Pending requests (auto-created)
-├── usage_logs.json                 # Usage tracking (auto-created)
-├── pretrained_models/              # SpeechBrain model cache (auto-created)
-├── .streamlit/
-│   └── secrets.toml                # Configuration (DO NOT COMMIT)
-├── .gitignore
+FG_Kinyarwanda_transcriber/
+│
+├── app.py                     # Main Streamlit UI
+│
+├── src/
+│   ├── __init__.py
+│   ├── core/
+│   │   ├── __init__.py
+│   │   ├── transcriber.py     # Audio transcription logic
+│   │   ├── gemini_processor.py
+│   │   └── utils.py           # Shared helper functions
+│   │
+│   ├── services/
+│   │   ├── __init__.py
+│   │   ├── auth_handler.py
+│   │   ├── admin_handler.py
+│   │   └── pipeline.py        # Pipeline combining multiple modules
+│   │
+│   └── config/
+│       ├── __init__.py
+│       ├── settings.py
+│       └── secrets_template.example
+│
+├── tests/
+│   ├── __init__.py
+│   └── test_transcriber.py
+│
+├── requirements.txt
 ├── README.md
 ├── DEPLOYMENT.md
+├── .gitignore
 └── LICENSE
 ```
 

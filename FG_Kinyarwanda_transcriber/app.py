@@ -2,9 +2,11 @@ import streamlit as st
 import os
 import tempfile
 from datetime import datetime
-from transcriber import KinyarwandaTranscriber
-from gemini_processor import GeminiProcessor
-from admin_handler import UserManager, AdminDashboard
+from src.core.transcriber import KinyarwandaTranscriber
+from src.core.gemini_processor import GeminiProcessor
+from src.services.admin_handler import UserManager, AdminDashboard
+from src.services.pipeline import TranscriptionPipeline
+from src.config.settings import config
 
 # Page config
 st.set_page_config(
@@ -28,30 +30,8 @@ if 'transcription_results' not in st.session_state:
 user_manager = UserManager()
 admin_dashboard = AdminDashboard()
 
-
-# Load secrets (safe defaults)
-GOOGLE_API = st.secrets.get("GOOGLE_API", None)
-ADMIN_EMAILS = st.secrets.get("ADMIN_EMAILS", [])
-
-# Try to inject admin emails and google api if the manager objects expose attributes/methods for that.
-try:
-    if ADMIN_EMAILS:
-        if hasattr(user_manager, "admins"):
-            user_manager.admins = ADMIN_EMAILS
-        elif hasattr(user_manager, "set_admins"):
-            user_manager.set_admins(ADMIN_EMAILS)
-except Exception:
-    pass
-
-try:
-    if GOOGLE_API:
-        if hasattr(admin_dashboard, "google_api"):
-            admin_dashboard.google_api = GOOGLE_API
-        elif hasattr(admin_dashboard, "set_google_api"):
-            admin_dashboard.set_google_api(GOOGLE_API)
-except Exception:
-    pass
-
+# Inject config into user_manager
+user_manager.admin_emails = config.admin_emails
 
 def render_login_page():
     """Login and access request page"""
@@ -193,52 +173,12 @@ def process_audio(audio_file, chunk_duration):
             tmp_file.write(audio_file.read())
             tmp_path = tmp_file.name
         
-        # Progress tracking
-        progress_bar = st.progress(0)
-        status_text = st.empty()
-        
-        # Step 1: Transcription
-        status_text.text("🎯 Step 1/3: Loading transcription model...")
-        progress_bar.progress(10)
-        
-        with st.spinner("Loading Wav2Vec2 model..."):
-            transcriber = KinyarwandaTranscriber()
-            transcriber.load_model()
-        
-        progress_bar.progress(30)
-        status_text.text("🎙️ Transcribing audio chunks...")
-        
-        raw_transcript = transcriber.transcribe_audio(
-            tmp_path,
-            chunk_duration=chunk_duration,
-            save_output=False
-        )
-        
-        progress_bar.progress(50)
-        
-        # Step 2: Gemini Processing
-        status_text.text("✨ Step 2/3: AI-powered text correction...")
-        gemini = GeminiProcessor()
-        
-        cleaned_text = gemini.fix_orthography(raw_transcript)
-        progress_bar.progress(70)
-        
-        status_text.text("📝 Generating Kinyarwanda summary...")
-        summary_rw = gemini.summarize_kinyarwanda(cleaned_text)
-        progress_bar.progress(85)
-        
-        status_text.text("🌍 Translating to English...")
-        summary_en = gemini.translate_to_english(summary_rw)
-        progress_bar.progress(100)
-        
-        status_text.text("✅ Step 3/3: Complete!")
+        pipeline = TranscriptionPipeline()
+        results = pipeline.run(tmp_path, chunk_duration)
         
         # Store results
         st.session_state.transcription_results = {
-            'raw': raw_transcript,
-            'cleaned': cleaned_text,
-            'summary_rw': summary_rw,
-            'summary_en': summary_en,
+            **results,
             'filename': audio_file.name,
             'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         }
