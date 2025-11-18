@@ -27,9 +27,7 @@ class TranscriptionPipeline:
             A dictionary containing the raw transcript and the processed data.
         """
         # Step 1: Transcribe the audio file
-        raw_transcript = self.transcriber.transcribe_audio(
-            audio_file_path, chunk_duration=chunk_duration, save_output=False
-        )
+        raw_transcript = self.transcriber.transcribe(audio_file_path)
 
         # Step 2: Process the transcript with Gemini
         processed_data = self.gemini_processor.process_full_pipeline(raw_transcript)

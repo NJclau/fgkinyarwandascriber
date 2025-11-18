@@ -1,10 +1,8 @@
 streamlit
+faster-whisper==1.0.3
 librosa==0.11.0
 soundfile==0.13.1
 pydub==0.25.1
-speechbrain==1.0.3
-torch==2.2.0
-torchaudio==2.2.0
 numpy==2.3.5
 requests==2.32.5
 google-generativeai==0.8.5
