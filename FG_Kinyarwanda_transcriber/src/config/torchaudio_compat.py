@@ -2,31 +2,38 @@
 Compatibility shim for torchaudio on CPU-only hosts.
 
 Purpose:
-- Provide a safe fallback for missing runtime attributes like list_audio_backends()
+- Provide a fallback for missing runtime attributes like list_audio_backends()
   that some torchaudio wheel variations may not expose in minimal/stripped builds.
 - Run early (imported before speechbrain/torchaudio usage) to avoid import-time failures.
 
-This file should be safe to import; it intentionally swallows exceptions to avoid
-masking real problems during startup.
+This shim is intentionally conservative: it does not emulate torchaudio decoding,
+it only supplies missing attributes used by SpeechBrain during import checks.
 """
 
 def _ensure_torchaudio_compat():
     try:
         import torchaudio
     except Exception:
-        # If torchaudio import fails entirely, let the downstream code handle it.
+        # torchaudio not importable — let downstream code handle the error
         return
 
-    # If older/stripped builds lack list_audio_backends, provide a conservative fallback.
     try:
+        # Provide a safe fallback for list_audio_backends if absent
         if not hasattr(torchaudio, "list_audio_backends"):
             def _fallback_list_audio_backends():
-                # return common backend names; speechbrain only queries presence/length in checks
+                # Return plausible backends; SpeechBrain only checks for presence/length
                 return ["sox_io", "soundfile"]
             torchaudio.list_audio_backends = _fallback_list_audio_backends
+
+        # Provide a no-op for set_audio_backend if absent (some versions use it)
+        if not hasattr(torchaudio, "set_audio_backend"):
+            def _noop_set_audio_backend(name):
+                return None
+            torchaudio.set_audio_backend = _noop_set_audio_backend
+
     except Exception:
-        # Avoid raising here — leave real failure detection to later imports
+        # Never raise on compatibility shim — leave real errors to real imports
         return
 
-# Run shim at import time
+# Execute the shim at import time
 _ensure_torchaudio_compat()
