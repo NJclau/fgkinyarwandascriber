@@ -1,0 +1,28 @@
+# Streamlit
+streamlit==1.31.0
+
+# Audio Processing
+librosa==0.10.1
+soundfile==0.12.1
+pydub==0.25.1
+
+# ML/AI Models - SpeechBrain
+speechbrain==0.5.16
+transformers==4.36.0
+torch==2.1.2
+torchaudio==2.1.2
+sentencepiece==0.1.99
+
+# Google Gemini
+google-generativeai==0.3.2
+
+# Utilities
+numpy==1.24.3
+pandas==2.1.4
+
+# Optional: For production Google OAuth (uncomment when ready)
+# streamlit-google-oauth==0.1.7
+
+# Optional: For cloud deployment
+# google-cloud-storage==2.14.0
+# google-cloud-firestore==2.14.0
