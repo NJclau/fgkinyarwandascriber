@@ -1,1 +1,10 @@
-# =================================== # Kinyarwanda Focus Group Transcriber # Requirements File - Python 3.13 Compatible # =================================== # Core Framework streamlit==1.31.0 # Audio Processing librosa==0.10.1 soundfile==0.12.1 pydub==0.25.1 ffmpeg-python==0.2.0 # ML/AI Models - Speech Recognition speechbrain==0.5.16 transformers==4.36.0 # CRITICAL FIX: Use compatible PyTorch versions torch==2.1.0 torchaudio==2.1.0 # CRITICAL FIX: Use pre-built sentencepiece wheel sentencepiece==0.2.0 # AI Processing - Google Gemini google-generativeai==0.3.2 # CRITICAL FIX: Use compatible pandas version numpy==1.26.4 pandas==2.2.0 # =================================== # DEPLOYMENT NOTES # =================================== # # Changes from original requirements.txt: # 1. torch: 2.3.0 → 2.1.0 (Python 3.13 compatible) # 2. torchaudio: 2.3.0 → 2.1.0 (matches torch version) # 3. sentencepiece: 0.1.99 → 0.2.0 (pre-built wheel, no compilation needed) # 4. pandas: 2.1.4 → 2.2.0 (Python 3.13 compatible) # # All other dependencies remain unchanged. # SpeechBrain will still download models automatically from HuggingFace.
+streamlit
+librosa
+soundfile
+pydub
+speechbrain
+torch
+numpy
+requests
+google-generativeai
+python-dotenv
