@@ -25,6 +25,10 @@ if 'page' not in st.session_state:
     st.session_state.page = 'home'
 if 'transcription_results' not in st.session_state:
     st.session_state.transcription_results = None
+if 'streaming' not in st.session_state:
+    st.session_state.streaming = False
+if 'transcription_generator' not in st.session_state:
+    st.session_state.transcription_generator = None
 
 # Initialize managers
 user_manager = UserManager()
@@ -141,29 +145,147 @@ def render_transcription_page():
             st.session_state.transcription_results = None
             st.rerun()
     
-    # File upload
-    st.markdown("### 📁 Upload Audio File")
-    audio_file = st.file_uploader(
-        "Select audio file for transcription",
-        type=['mp3', 'wav', 'm4a', 'ogg', 'flac'],
-        help="Supported: MP3, WAV, M4A, OGG, FLAC (Max 50MB)"
-    )
-    
-    if audio_file:
-        col1, col2, col3 = st.columns([2, 1, 1])
+    # Mode switcher
+    is_streaming_mode = st.toggle("Streaming Mode", key="streaming_mode_toggle")
+
+    if is_streaming_mode:
+        st.markdown("### 🔴 Streaming Transcription")
+
+        # UI for streaming
+        if st.session_state.streaming:
+            if st.button("⏹️ Stop Streaming", use_container_width=True):
+                st.session_state.streaming = False
+                st.session_state.transcription_generator = None
+                st.rerun()
+
+        st.markdown("---")
+        placeholder = st.empty()
+        placeholder = st.empty()
         
-        with col1:
-            st.audio(audio_file, format=f'audio/{audio_file.name.split(".")[-1]}')
+        # Displaying the transcription
+        if st.session_state.get('streaming', False) and st.session_state.get('transcription_generator'):
+            full_transcript = ""
+            placeholder.markdown("### 🔴 Live Transcription")
+            transcript_area = st.empty()
+
+            # Update UI with new segments
+            for segment in st.session_state.transcription_generator:
+                full_transcript += segment
+                transcript_area.text_area("Transcript", full_transcript, height=300)
+
+            st.session_state.streaming = False
+            st.session_state.transcription_generator = None
+            st.success("Streaming finished!")
+        else:
+            placeholder.info("Upload an audio file to start streaming.")
+
+        # Audio uploader for streaming
+        uploaded_audio = st.file_uploader(
+            "Upload an audio file to start streaming",
+            type=['mp3', 'wav', 'm4a', 'ogg', 'flac'],
+            key="streaming_uploader"
+        )
+
+        if uploaded_audio and not st.session_state.get('streaming', False):
+            # Save the uploaded file to a temporary path
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_audio_file:
+                temp_audio_file.write(uploaded_audio.getvalue())
+                temp_audio_path = temp_audio_file.name
+
+            # Start the transcription and store the generator
+            st.session_state.streaming = True
+            st.session_state.transcription_generator = stream_transcription(
+                temp_audio_path, chunk_duration
+            )
+            st.rerun()
+
+    else:
+        # File upload
+        st.markdown("### 📁 Upload Audio File")
+        audio_file = st.file_uploader(
+            "Select audio file for transcription",
+            type=['mp3', 'wav', 'm4a', 'ogg', 'flac'],
+            help="Supported: MP3, WAV, M4A, OGG, FLAC (Max 50MB)"
+        )
         
-        with col2:
-            st.metric("📦 File Size", f"{audio_file.size / (1024*1024):.2f} MB")
+        if audio_file:
+            col1, col2, col3 = st.columns([2, 1, 1])
+
+            with col1:
+                st.audio(audio_file, format=f'audio/{audio_file.name.split(".")[-1]}')
+
+            with col2:
+                st.metric("📦 File Size", f"{audio_file.size / (1024*1024):.2f} MB")
+
+            with col3:
+                st.metric("📄 File Name", audio_file.name)
+
+            # Process button
+            if st.button("🚀 Start Processing", type="primary", use_container_width=True):
+                process_audio(audio_file, chunk_duration)
+
+
+def _format_time(seconds):
+    """Formats seconds to the HH:MM:SS format."""
+    hours = int(seconds // 3600)
+    minutes = int((seconds % 3600) // 60)
+    secs = int(seconds % 60)
+    return f"{hours:02d}:{minutes:02d}:{secs:02d}"
+
+
+def stream_transcription(audio_path, chunk_duration):
+    """
+    A generator that transcribes an audio file in chunks and yields results.
+    This function re-implements the transcription logic from the
+    KinyarwandaTranscriber class to allow for real-time streaming output
+    without modifying the core class.
+
+    Args:
+        audio_path (str): Path to the audio file.
+        chunk_duration (int): Duration of each chunk in seconds.
+
+    Yields:
+        str: Formatted transcription segments.
+    """
+    transcriber = KinyarwandaTranscriber()
+    processed_path = None
+    chunks = []
+
+    try:
+        if not transcriber.model_loaded:
+            with st.spinner("Loading transcription model..."):
+                transcriber.load_model()
         
-        with col3:
-            st.metric("📄 File Name", audio_file.name)
+        # Process and chunk audio using methods from the transcriber class
+        processed_path = transcriber.preprocess_audio(audio_path)
+        chunks, timestamps, total_duration = transcriber.chunk_audio(
+            processed_path, chunk_duration
+        )
         
-        # Process button
-        if st.button("🚀 Start Processing", type="primary", use_container_width=True):
-            process_audio(audio_file, chunk_duration)
+        st.info(f"Audio ready for streaming ({len(chunks)} chunks)...")
+
+        # Transcribe each chunk and yield the result
+        for i, (chunk_path, (start_t, end_t)) in enumerate(zip(chunks, timestamps)):
+            # Check if user has stopped the streaming
+            if not st.session_state.get('streaming', False):
+                yield "\n[STREAMING STOPPED BY USER]"
+                break
+
+            transcription = transcriber.transcribe_chunk(chunk_path)
+            timestamp = f"[{_format_time(start_t)} - {_format_time(end_t)}]"
+            segment = f"{timestamp}\n{transcription}\n\n"
+            yield segment
+
+    except Exception as e:
+        st.error(f"Error during streaming transcription: {e}")
+        yield "\n[TRANSCRIPTION ERROR]"
+    finally:
+        # Cleanup all temporary files
+        if processed_path and os.path.exists(processed_path):
+            os.remove(processed_path)
+        for chunk_path in chunks:
+            if os.path.exists(chunk_path):
+                os.remove(chunk_path)
 
 
 def process_audio(audio_file, chunk_duration):
