@@ -2,7 +2,7 @@ import os
 import gc
 import librosa
 from pydub import AudioSegment
-from speechbrain.inference.ASR import EncoderASR
+from speechbrain.pretrained.interfaces import EncoderASR
 import streamlit as st
 from src.config.settings import config
 
