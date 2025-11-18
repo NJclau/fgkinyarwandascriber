@@ -1,3 +1,6 @@
+# Ensure torchaudio compatibility shim loads before speechbrain/torchaudio imports
+from src.config import torchaudio_compat  # noqa: F401
+
 import streamlit as st
 import os
 import tempfile
