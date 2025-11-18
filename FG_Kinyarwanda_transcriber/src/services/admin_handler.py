@@ -5,7 +5,7 @@ import os
 from typing import Dict, List, Optional
 import hashlib
 import secrets
-
+from src.config.settings import config
 
 class UserManager:
     """Manage user access, authentication, and permissions"""
@@ -13,7 +13,7 @@ class UserManager:
     def __init__(self):
         self.users_file = "users_database.json"
         self.pending_file = "pending_users.json"
-        self.admin_emails = st.secrets.get("ADMIN_EMAILS", [])
+        self.admin_emails = config.admin_emails
         self.initialize_files()
     
     def initialize_files(self):

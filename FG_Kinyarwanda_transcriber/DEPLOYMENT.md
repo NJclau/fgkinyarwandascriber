@@ -25,11 +25,11 @@ Complete deployment instructions with admin authentication and user management.
 ```bash
 # 1. Clone repository
 git clone <your-repo-url>
-cd kinyarwanda-transcriber
+cd kinyarwanda-transcriber/FG_Kinyarwanda_transcriber
 
 # 2. Create virtual environment
 python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
+source ven v/bin/activate  # Windows: venv\Scripts\activate
 
 # 3. Install dependencies
 pip install -r requirements.txt
@@ -45,7 +45,7 @@ brew install ffmpeg
 
 # 5. Configure secrets
 mkdir .streamlit
-cp secrets.toml.example .streamlit/secrets.toml
+cp src/config/secrets_template.example .streamlit/secrets.toml
 
 # 6. Edit secrets.toml with your API keys
 nano .streamlit/secrets.toml
@@ -75,7 +75,7 @@ USE_GPU = false  # Set to true if GPU available
 ### Run Application
 
 ```bash
-streamlit run main_app_integrated.py
+streamlit run app.py
 ```
 
 Visit `http://localhost:8501`
@@ -108,7 +108,7 @@ git push origin main
 - Visit https://share.streamlit.io
 - Click "New app"
 - Select your repository
-- Main file: `main_app_integrated.py`
+- Main file: `app.py`
 - Click "Deploy"
 
 3. **Add Secrets**
@@ -179,7 +179,7 @@ EXPOSE 8080
 HEALTHCHECK CMD curl --fail http://localhost:8080/_stcore/health || exit 1
 
 # Run app
-CMD streamlit run main_app_integrated.py \
+CMD streamlit run app.py \
     --server.port=8080 \
     --server.address=0.0.0.0 \
     --server.headless=true
@@ -326,7 +326,7 @@ SMTP_EMAIL = "noreply@dinosoft.rw"
 SMTP_PASSWORD = "your_app_password"
 ```
 
-Update `admin_handler_enhanced.py` to send emails on approval/rejection.
+Update `src/services/admin_handler.py` to send emails on approval/rejection.
 
 ---
 
@@ -384,6 +384,7 @@ chmod 666 usage_logs.json
 # Cache model loading
 @st.cache_resource
 def load_transcriber():
+    from src.core.transcriber import KinyarwandaTranscriber
     transcriber = KinyarwandaTranscriber()
     transcriber.load_model()
     return transcriber
@@ -391,6 +392,7 @@ def load_transcriber():
 # Cache Gemini processor
 @st.cache_resource
 def load_gemini():
+    from src.core.gemini_processor import GeminiProcessor
     return GeminiProcessor()
 ```
 

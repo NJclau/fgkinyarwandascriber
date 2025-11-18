@@ -2,14 +2,14 @@ import os
 import streamlit as st
 import google.generativeai as genai
 from typing import Optional
-
+from src.config.settings import config
 
 class GeminiProcessor:
     """Process transcripts using Google Gemini API"""
     
     def __init__(self):
         """Initialize Gemini with API key from secrets"""
-        api_key = st.secrets.get("GEMINI_API_KEY", os.environ.get("GEMINI_API_KEY"))
+        api_key = config.gemini_api_key
         
         if not api_key:
             raise ValueError("GEMINI_API_KEY not found in secrets or environment variables")

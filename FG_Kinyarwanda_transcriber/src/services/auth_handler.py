@@ -1,7 +1,7 @@
 import streamlit as st
 import os
 from typing import Optional
-
+from src.config.settings import config
 
 def check_authentication() -> bool:
     """
@@ -16,7 +16,7 @@ def check_authentication() -> bool:
     """
     
     # Check if demo mode is enabled
-    demo_mode = st.secrets.get("DEMO_MODE", True)
+    demo_mode = config.demo_mode
     
     if demo_mode:
         # Demo mode: auto-authenticate
@@ -25,7 +25,7 @@ def check_authentication() -> bool:
         return True
     
     # Production mode: Check for valid credentials
-    allowed_emails = st.secrets.get("ALLOWED_EMAILS", [])
+    allowed_emails = config.allowed_emails
     
     if not allowed_emails:
         st.error("No authorized users configured. Add ALLOWED_EMAILS to secrets.toml")
