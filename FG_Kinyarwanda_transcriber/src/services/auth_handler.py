@@ -4,15 +4,13 @@ from typing import Optional
 from src.config.settings import config
 
 def check_authentication() -> bool:
-    """
-    Simple authentication check for MVP.
-    
-    For production, integrate with:
-    - streamlit-google-oauth package
-    - Firebase Authentication
-    - Auth0
-    
-    Current implementation: Demo mode with optional password
+    """Performs a simple authentication check.
+
+    This function is intended for MVP purposes and should be replaced with a
+    more robust authentication solution in a production environment.
+
+    Returns:
+        True if the user is authenticated, False otherwise.
     """
     
     # Check if demo mode is enabled
@@ -40,48 +38,31 @@ def check_authentication() -> bool:
 
 
 def setup_google_oauth():
-    """
-    Production-ready Google OAuth integration.
-    
-    To implement:
-    1. Install: pip install streamlit-google-oauth
-    2. Set up Google Cloud Console:
-       - Create OAuth 2.0 credentials
-       - Add authorized redirect URIs
-       - Enable Google+ API
-    3. Add to secrets.toml:
-       GOOGLE_CLIENT_ID = "your-client-id"
-       GOOGLE_CLIENT_SECRET = "your-secret"
-    
-    Example implementation:
-    
-    from streamlit_google_auth import Authenticate
-    
-    authenticator = Authenticate(
-        secret_credentials_path='secrets.toml',
-        cookie_name='focus_group_auth',
-        cookie_key='random_signature_key',
-        redirect_uri='http://localhost:8501',
-    )
-    
-    authenticator.check_authentification()
-    st.write(f"Welcome {authenticator.user_email}")
+    """Sets up Google OAuth for production-ready authentication.
+
+    This function is a placeholder for the actual implementation of Google
+    OAuth. To implement, follow the instructions in the docstring.
     """
     pass
 
 
 def logout():
-    """Clear authentication session"""
-    if 'authenticated' in st.session_state:
+    """Clears the user's authentication session."""
+    if "authenticated" in st.session_state:
         st.session_state.authenticated = False
-    if 'user_email' in st.session_state:
+    if "user_email" in st.session_state:
         del st.session_state.user_email
-    if 'user_name' in st.session_state:
+    if "user_name" in st.session_state:
         del st.session_state.user_name
 
 
 def get_user_info() -> dict:
-    """Get current user information"""
+    """Gets the current user's information.
+
+    Returns:
+        A dictionary containing the user's email, name, and authentication
+        status.
+    """
     return {
         'email': st.session_state.get('user_email', 'anonymous'),
         'name': st.session_state.get('user_name', 'Anonymous User'),

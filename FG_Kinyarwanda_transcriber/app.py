@@ -33,11 +33,12 @@ admin_dashboard = AdminDashboard()
 # Inject config into user_manager
 user_manager.admin_emails = config.admin_emails
 
+
 def render_login_page():
-    """Login and access request page"""
+    """Renders the login and access request page."""
     st.title("🎙️ Kinyarwanda Focus Group Transcriber")
     st.markdown("### Secure Audio Transcription & Analysis Portal")
-    
+
     col1, col2, col3 = st.columns([1, 2, 1])
     
     with col2:
@@ -109,9 +110,9 @@ def render_login_page():
 
 
 def render_transcription_page():
-    """Main transcription interface"""
+    """Renders the main transcription page."""
     st.title("🎙️ Audio Transcription & Analysis")
-    
+
     # Sidebar
     with st.sidebar:
         st.header("📊 Session Info")
@@ -166,10 +167,17 @@ def render_transcription_page():
 
 
 def process_audio(audio_file, chunk_duration):
-    """Process audio file through transcription pipeline"""
+    """Processes an audio file through the transcription pipeline.
+
+    Args:
+        audio_file: The audio file to process.
+        chunk_duration: The duration of each chunk in seconds.
+    """
     try:
         # Save uploaded file
-        with tempfile.NamedTemporaryFile(delete=False, suffix=f".{audio_file.name.split('.')[-1]}") as tmp_file:
+        with tempfile.NamedTemporaryFile(
+            delete=False, suffix=f".{audio_file.name.split('.')[-1]}"
+        ) as tmp_file:
             tmp_file.write(audio_file.read())
             tmp_path = tmp_file.name
         
@@ -208,10 +216,10 @@ def process_audio(audio_file, chunk_duration):
 
 
 def display_results():
-    """Display transcription results"""
+    """Displays the transcription results."""
     if not st.session_state.transcription_results:
         return
-    
+
     results = st.session_state.transcription_results
     
     st.markdown("---")

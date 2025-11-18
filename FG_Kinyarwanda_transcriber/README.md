@@ -262,6 +262,25 @@ See [DEPLOYMENT.md](DEPLOYMENT.md) for complete deployment instructions.
 
 ---
 
+## 📖 Codebase Documentation
+
+This codebase is fully documented using Google-style Python docstrings. To
+generate a local copy of the documentation, you can use a tool like
+[pdoc](https://pdoc.dev/).
+
+```bash
+# Install pdoc
+pip install pdoc
+
+# Generate documentation
+pdoc --html --output-dir docs src
+```
+
+This will create a `docs` directory containing the HTML documentation for the
+`src` directory.
+
+---
+
 ## 🔧 Configuration
 
 ### Audio Processing Settings

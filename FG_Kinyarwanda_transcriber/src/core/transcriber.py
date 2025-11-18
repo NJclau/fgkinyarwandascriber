@@ -7,34 +7,52 @@ import streamlit as st
 from src.config.settings import config
 
 class KinyarwandaTranscriber:
-    """Kinyarwanda ASR using SpeechBrain wav2vec2-commonvoice model"""
-    
+    """A class for transcribing Kinyarwanda audio using a SpeechBrain model.
+
+    Attributes:
+        model: The SpeechBrain ASR model.
+        model_loaded: A boolean indicating whether the model has been loaded.
+    """
+
     def __init__(self):
+        """Initializes the KinyarwandaTranscriber."""
         self.model = None
         self.model_loaded = False
         print("Kinyarwanda Transcriber initialized")
 
     def load_model(self):
-        """Load SpeechBrain ASR model"""
+        """Loads the SpeechBrain ASR model.
+
+        Raises:
+            Exception: If the model fails to load.
+        """
         print("Loading SpeechBrain Kinyarwanda ASR model...")
-        
+
         try:
             # Load model with GPU support if available
             run_opts = {"device": "cuda"} if config.use_gpu else {"device": "cpu"}
-            
+
             self.model = EncoderASR.from_hparams(
                 source="speechbrain/asr-wav2vec2-commonvoice-14-rw",
                 savedir="pretrained_models/asr-wav2vec2-commonvoice-14-rw",
-                run_opts=run_opts
+                run_opts=run_opts,
             )
             self.model_loaded = True
             print("✓ Model loaded successfully")
-            
+
         except Exception as e:
             raise Exception(f"Failed to load model: {str(e)}")
 
     def preprocess_audio(self, input_path, target_sr=16000):
-        """Convert audio to required format (mono, 16kHz WAV)"""
+        """Converts audio to the required format (mono, 16kHz WAV).
+
+        Args:
+            input_path: The path to the input audio file.
+            target_sr: The target sample rate.
+
+        Returns:
+            The path to the processed audio file.
+        """
         try:
             audio = AudioSegment.from_file(input_path)
             audio = audio.set_channels(1).set_frame_rate(target_sr)
@@ -47,35 +65,51 @@ class KinyarwandaTranscriber:
             raise
 
     def chunk_audio(self, audio_path, chunk_duration=30):
-        """Split audio into chunks with timestamps"""
+        """Splits an audio file into chunks with timestamps.
+
+        Args:
+            audio_path: The path to the audio file.
+            chunk_duration: The duration of each chunk in seconds.
+
+        Returns:
+            A tuple containing a list of chunk file paths, a list of timestamps,
+            and the total duration of the audio.
+        """
         audio, sr = librosa.load(audio_path, sr=16000, mono=True)
         duration = len(audio) / sr
-        
+
         chunks = []
         timestamps = []
-        
+
         chunk_samples = int(chunk_duration * sr)
         overlap_samples = int(2 * sr)  # 2-second overlap
-        
+
         start = 0
         while start < len(audio):
             end = min(start + chunk_samples, len(audio))
             chunk = audio[start:end]
-            
+
             if len(chunk) > sr:  # Only process chunks > 1 second
                 chunk_path = f"/tmp/chunk_{len(chunks)}.wav"
                 librosa.output.write_wav(chunk_path, chunk, sr)
                 chunks.append(chunk_path)
-                timestamps.append((start/sr, end/sr))
-                
+                timestamps.append((start / sr, end / sr))
+
             start = end - overlap_samples
             if start >= len(audio) - overlap_samples:
                 break
-                
+
         return chunks, timestamps, duration
 
     def transcribe_chunk(self, chunk_path):
-        """Transcribe single audio chunk"""
+        """Transcribes a single audio chunk.
+
+        Args:
+            chunk_path: The path to the audio chunk.
+
+        Returns:
+            The transcription of the audio chunk.
+        """
         if not self.model_loaded:
             raise ValueError("Model not loaded! Call load_model() first.")
 
@@ -87,7 +121,16 @@ class KinyarwandaTranscriber:
             return "[TRANSCRIPTION_ERROR]"
 
     def transcribe_audio(self, audio_path, chunk_duration=30, save_output=False):
-        """Main transcription with progress tracking"""
+        """Transcribes an audio file with progress tracking.
+
+        Args:
+            audio_path: The path to the audio file.
+            chunk_duration: The duration of each chunk in seconds.
+            save_output: A boolean indicating whether to save the output to a file.
+
+        Returns:
+            The full transcription of the audio file.
+        """
         if not self.model_loaded:
             self.load_model()
 
@@ -142,7 +185,14 @@ class KinyarwandaTranscriber:
         return final_transcription
 
     def _format_time(self, seconds):
-        """Format seconds to HH:MM:SS"""
+        """Formats seconds to the HH:MM:SS format.
+
+        Args:
+            seconds: The number of seconds to format.
+
+        Returns:
+            A string representing the time in HH:MM:SS format.
+        """
         hours = int(seconds // 3600)
         minutes = int((seconds % 3600) // 60)
         secs = int(seconds % 60)
