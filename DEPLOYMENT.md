@@ -1,108 +1,158 @@
-# Deployment Guide
+# 🚀 Kinyarwanda Focus Group Transcriber - Deployment Guide
 
-Complete deployment instructions for Kinyarwanda Focus Group Transcriber across multiple platforms.
+Complete deployment instructions with admin authentication and user management.
 
-## Table of Contents
+## 📋 Table of Contents
 
-1. [Streamlit Cloud (Fastest)](#streamlit-cloud)
-2. [Google Cloud Run (Production)](#google-cloud-run)
-3. [Docker Deployment](#docker-deployment)
-4. [Google OAuth Setup](#google-oauth-setup)
-5. [Cloud Storage Integration](#cloud-storage)
-6. [Monitoring & Logging](#monitoring)
+1. [Quick Start (Local)](#quick-start-local)
+2. [Production Deployment](#production-deployment)
+3. [Admin Setup](#admin-setup)
+4. [User Management Workflow](#user-management-workflow)
+5. [Environment Configuration](#environment-configuration)
+6. [Troubleshooting](#troubleshooting)
 
 ---
 
-## Streamlit Cloud
+## 🏃 Quick Start (Local)
 
-**Best for**: MVP, demos, small teams  
-**Time to deploy**: 15 minutes  
-**Cost**: Free tier available
+### Prerequisites
+- Python 3.10+
+- ffmpeg installed
+- Google Gemini API key
 
-### Steps
+### Installation Steps
+
+```bash
+# 1. Clone repository
+git clone <your-repo-url>
+cd kinyarwanda-transcriber
+
+# 2. Create virtual environment
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+
+# 3. Install dependencies
+pip install -r requirements.txt
+
+# 4. Install ffmpeg
+# Ubuntu/Debian:
+sudo apt-get install ffmpeg
+
+# macOS:
+brew install ffmpeg
+
+# Windows: Download from https://ffmpeg.org/download.html
+
+# 5. Configure secrets
+mkdir .streamlit
+cp secrets.toml.example .streamlit/secrets.toml
+
+# 6. Edit secrets.toml with your API keys
+nano .streamlit/secrets.toml
+```
+
+### Configure `.streamlit/secrets.toml`
+
+```toml
+# API Keys
+GEMINI_API_KEY = "your_gemini_api_key"
+
+# Admin Configuration
+ADMIN_EMAILS = [
+    "admin@dinosoft.rw",
+    "your_email@example.com"
+]
+
+# System Limits
+MAX_FILE_SIZE_MB = 50
+MAX_DURATION_MINUTES = 30
+DAILY_UPLOAD_LIMIT = 10
+
+# Optional: GPU Support
+USE_GPU = false  # Set to true if GPU available
+```
+
+### Run Application
+
+```bash
+streamlit run main_app_integrated.py
+```
+
+Visit `http://localhost:8501`
+
+---
+
+## 🌐 Production Deployment
+
+### Option 1: Streamlit Cloud (Recommended for MVP)
+
+**Time:** 15 minutes | **Cost:** Free tier available
+
+#### Steps:
 
 1. **Prepare Repository**
 ```bash
-# Create .gitignore
+# Add to .gitignore
 echo ".streamlit/secrets.toml" >> .gitignore
-echo "__pycache__/" >> .gitignore
-echo "*.pyc" >> .gitignore
+echo "users_database.json" >> .gitignore
+echo "pending_users.json" >> .gitignore
+echo "usage_logs.json" >> .gitignore
 
-# Commit code
+# Commit and push
 git add .
-git commit -m "Initial commit"
+git commit -m "Initial deployment"
 git push origin main
 ```
 
 2. **Deploy to Streamlit Cloud**
 - Visit https://share.streamlit.io
 - Click "New app"
-- Select your GitHub repository
-- Set main file: `app.py`
+- Select your repository
+- Main file: `main_app_integrated.py`
 - Click "Deploy"
 
 3. **Add Secrets**
 - Go to App Settings → Secrets
-- Paste your `secrets.toml` content:
+- Paste your secrets.toml content:
+
 ```toml
-HF_TOKEN = "hf_your_token"
+# API Keys (Only Gemini needed - SpeechBrain downloads model automatically)
 GEMINI_API_KEY = "your_gemini_key"
-DEMO_MODE = true
+
+# Admin Configuration
+ADMIN_EMAILS = [
+    "admin@dinosoft.rw"
+]
+
+# System Limits
+MAX_FILE_SIZE_MB = 50
+MAX_DURATION_MINUTES = 30
+DAILY_UPLOAD_LIMIT = 10
+
+# Optional: GPU Support
+USE_GPU = false
 ```
 
-4. **Configure Advanced Settings**
+4. **Configure Settings**
 - Python version: 3.10
-- Enable "Always rerun on save" for development
-
-### Custom Domain (Optional)
-- Go to Settings → General
-- Add custom domain
-- Update DNS CNAME record
+- Resources: 2GB RAM recommended
 
 ---
 
-## Google Cloud Run
+### Option 2: Google Cloud Run (Production Scale)
 
-**Best for**: Production, scalability, enterprise  
-**Time to deploy**: 1-2 hours  
-**Cost**: Pay per use (~$0.40/hour active)
+**Time:** 1-2 hours | **Cost:** ~$20-50/month
 
-### Prerequisites
+#### Prerequisites
 ```bash
 # Install Google Cloud SDK
-# Visit: https://cloud.google.com/sdk/docs/install
-
 gcloud auth login
 gcloud config set project YOUR_PROJECT_ID
 ```
 
-### Method 1: Automatic Deploy
+#### Deployment
 
-1. **Create app.yaml**
-```yaml
-runtime: python310
-entrypoint: streamlit run app.py --server.port=$PORT --server.address=0.0.0.0
-
-env_variables:
-  HF_TOKEN: "your_token"
-  GEMINI_API_KEY: "your_key"
-  DEMO_MODE: "true"
-```
-
-2. **Deploy**
-```bash
-gcloud run deploy kinyarwanda-transcriber \
-  --source . \
-  --region us-central1 \
-  --allow-unauthenticated \
-  --memory 2Gi \
-  --cpu 2 \
-  --timeout 3600
-```
-
-### Method 2: Docker Deploy
-
-1. **Create Dockerfile**
+1. **Create `Dockerfile`**
 ```dockerfile
 FROM python:3.10-slim
 
@@ -111,29 +161,28 @@ RUN apt-get update && apt-get install -y \
     ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
-# Set working directory
 WORKDIR /app
 
-# Copy requirements
+# Copy and install requirements
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application
 COPY . .
 
-# Expose port
+# Create data directories
+RUN mkdir -p /app/data
+
 EXPOSE 8080
 
 # Health check
 HEALTHCHECK CMD curl --fail http://localhost:8080/_stcore/health || exit 1
 
 # Run app
-CMD streamlit run app.py \
+CMD streamlit run main_app_integrated.py \
     --server.port=8080 \
     --server.address=0.0.0.0 \
-    --server.headless=true \
-    --browser.serverAddress="0.0.0.0" \
-    --server.enableCORS=false
+    --server.headless=true
 ```
 
 2. **Build and Deploy**
@@ -148,390 +197,274 @@ gcloud run deploy kinyarwanda-transcriber \
   --platform managed \
   --allow-unauthenticated \
   --memory 2Gi \
-  --set-env-vars HF_TOKEN=your_token,GEMINI_API_KEY=your_key
+  --cpu 2 \
+  --timeout 3600 \
+  --set-env-vars GEMINI_API_KEY=your_key,USE_GPU=false
 ```
 
-### Environment Variables
+3. **Configure Persistent Storage (Optional)**
 ```bash
-# Set secrets via Secret Manager
-gcloud secrets create hf-token --data-file=- <<< "hf_your_token"
-gcloud secrets create gemini-key --data-file=- <<< "your_gemini_key"
+# Create Cloud Storage bucket for user database
+gcloud storage buckets create gs://kinyarwanda-transcriber-data \
+  --location=us-central1
 
-# Grant access to Cloud Run
-gcloud secrets add-iam-policy-binding hf-token \
-  --member=serviceAccount:PROJECT_NUMBER-compute@developer.gserviceaccount.com \
-  --role=roles/secretmanager.secretAccessor
+# Update app to use Cloud Storage for JSON files
 ```
 
 ---
 
-## Docker Deployment
+## 🔐 Admin Setup
 
-**Best for**: Self-hosting, on-premise  
-**Time to deploy**: 30 minutes
+### Initial Admin Configuration
 
-### Local Docker
-
-```bash
-# Build
-docker build -t kinyarwanda-transcriber .
-
-# Run
-docker run -p 8501:8080 \
-  -e HF_TOKEN=your_token \
-  -e GEMINI_API_KEY=your_key \
-  kinyarwanda-transcriber
-```
-
-### Docker Compose
-
-**docker-compose.yml**
-```yaml
-version: '3.8'
-
-services:
-  app:
-    build: .
-    ports:
-      - "8501:8080"
-    environment:
-      - HF_TOKEN=${HF_TOKEN}
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
-      - DEMO_MODE=false
-    volumes:
-      - ./data:/app/data
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/_stcore/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-```
-
-**Deploy**
-```bash
-# Create .env file
-cat > .env << EOF
-HF_TOKEN=your_token
-GEMINI_API_KEY=your_key
-EOF
-
-# Start
-docker-compose up -d
-
-# View logs
-docker-compose logs -f
-```
-
----
-
-## Google OAuth Setup
-
-**Required for**: Production authentication
-
-### 1. Google Cloud Console
-
-1. Go to https://console.cloud.google.com
-2. Select/Create project
-3. Enable APIs:
-   - Google+ API
-   - People API
-
-4. Create OAuth Credentials:
-   - Navigation menu → APIs & Services → Credentials
-   - Create Credentials → OAuth 2.0 Client ID
-   - Application type: Web application
-   - Name: Kinyarwanda Transcriber
-
-5. **Authorized redirect URIs**:
-```
-http://localhost:8501
-https://your-app.streamlit.app
-https://your-domain.com
-```
-
-6. Copy Client ID and Client Secret
-
-### 2. Update Code
-
-**Install package**
-```bash
-pip install streamlit-google-oauth
-```
-
-**Update requirements.txt**
-```
-streamlit-google-oauth==0.1.7
-```
-
-**Update auth_handler.py**
-```python
-from streamlit_google_auth import Authenticate
-
-def check_authentication() -> bool:
-    authenticator = Authenticate(
-        secret_credentials_path='.streamlit/secrets.toml',
-        cookie_name='focus_group_auth',
-        cookie_key=st.secrets["COOKIE_KEY"],
-        redirect_uri=st.secrets["google_oauth"]["redirect_uri"]
-    )
-    
-    authenticator.check_authentification()
-    
-    if authenticator.is_authentificated:
-        st.session_state.authenticated = True
-        st.session_state.user_email = authenticator.user_email
-        st.session_state.user_name = authenticator.user_name
-        return True
-    
-    return False
-```
-
-**Update secrets.toml**
+1. **Set Admin Emails in secrets.toml**
 ```toml
-[google_oauth]
-client_id = "your-id.apps.googleusercontent.com"
-client_secret = "your-secret"
-redirect_uri = "https://your-app.streamlit.app"
-
-COOKIE_KEY = "random_secure_key_here"
-DEMO_MODE = false
-
-ALLOWED_EMAILS = [
-    "researcher1@example.com",
-    "researcher2@example.com"
+ADMIN_EMAILS = [
+    "claude.nshime@dinosoft.rw",
+    "admin2@dinosoft.rw"
 ]
 ```
 
-### 3. Add Email Whitelist (Optional)
+2. **First Admin Login**
+- Visit your deployed app
+- Login with your admin email
+- Access Admin Dashboard from sidebar
 
-**Update auth_handler.py**
-```python
-def check_authentication() -> bool:
-    authenticator = Authenticate(...)
-    authenticator.check_authentification()
-    
-    if authenticator.is_authentificated:
-        # Check whitelist
-        allowed = st.secrets.get("ALLOWED_EMAILS", [])
-        if allowed and authenticator.user_email not in allowed:
-            st.error("Access denied. Contact admin.")
-            return False
-        
-        st.session_state.authenticated = True
-        st.session_state.user_email = authenticator.user_email
-        return True
-    
-    return False
-```
+### Admin Dashboard Features
 
----
+#### 👥 User Management
+- View all active users
+- See usage statistics per user
+- Revoke access when needed
+- Export user database
 
-## Cloud Storage
+#### ⏳ Pending Requests
+- Review access requests
+- Approve/reject with reasons
+- Email notifications (when configured)
 
-**Best for**: Storing audio files and transcripts persistently
+#### 📊 Usage Analytics
+- Total transcriptions
+- Duration tracking
+- User activity logs
+- Export reports
 
-### Google Cloud Storage
-
-**Setup**
-```bash
-# Create bucket
-gcloud storage buckets create gs://kinyarwanda-transcriber-data \
-  --location=us-central1 \
-  --uniform-bucket-level-access
-
-# Create service account
-gcloud iam service-accounts create transcriber-sa
-
-# Grant permissions
-gcloud storage buckets add-iam-policy-binding gs://kinyarwanda-transcriber-data \
-  --member="serviceAccount:transcriber-sa@PROJECT_ID.iam.gserviceaccount.com" \
-  --role="roles/storage.objectAdmin"
-
-# Create key
-gcloud iam service-accounts keys create key.json \
-  --iam-account=transcriber-sa@PROJECT_ID.iam.gserviceaccount.com
-```
-
-**Integration**
-```python
-# Add to requirements.txt
-google-cloud-storage==2.14.0
-
-# storage_handler.py
-from google.cloud import storage
-import streamlit as st
-
-def upload_audio(file_path: str, bucket_name: str):
-    client = storage.Client()
-    bucket = client.bucket(bucket_name)
-    blob = bucket.blob(f"audio/{os.path.basename(file_path)}")
-    blob.upload_from_filename(file_path)
-    return blob.public_url
-
-def save_transcript(content: str, filename: str, bucket_name: str):
-    client = storage.Client()
-    bucket = client.bucket(bucket_name)
-    blob = bucket.blob(f"transcripts/{filename}")
-    blob.upload_from_string(content)
-```
-
-### Firebase Storage (Alternative)
-
-```bash
-pip install firebase-admin
-```
-
-**firebase_config.py**
-```python
-import firebase_admin
-from firebase_admin import credentials, storage
-
-cred = credentials.Certificate('firebase-key.json')
-firebase_admin.initialize_app(cred, {
-    'storageBucket': 'your-project.appspot.com'
-})
-
-bucket = storage.bucket()
-```
+#### ⚙️ System Settings
+- Configure upload limits
+- Set rate limits
+- Database management
+- System backups
 
 ---
 
-## Monitoring
+## 👥 User Management Workflow
 
-### Streamlit Cloud Logs
-- Dashboard → Manage app → Logs
-- Real-time log streaming
-- Error tracking
+### For Users (Focus Group Members)
 
-### Google Cloud Logging
+1. **Request Access**
+   - Visit app URL
+   - Click "Request Access" tab
+   - Fill in:
+     - Email address
+     - Full name
+     - Organization
+     - Reason for access
+   - Submit request
 
-```bash
-# View logs
-gcloud logging read "resource.type=cloud_run_revision" --limit 50
+2. **Wait for Approval**
+   - Admin reviews request
+   - Receives approval notification
+   - Can now login
 
-# Set up alerts
-gcloud alpha monitoring policies create \
-  --notification-channels=CHANNEL_ID \
-  --display-name="Transcriber Errors" \
-  --condition-threshold-value=5 \
-  --condition-threshold-duration=300s
-```
+3. **Login and Use**
+   - Enter approved email
+   - Click Login
+   - Upload and process audio files
 
-### Application Monitoring
+### For Admins
 
-**Add to app.py**
-```python
-import logging
-from datetime import datetime
+1. **Review Requests**
+   - Login with admin email
+   - Go to Admin Dashboard
+   - Check "Pending Requests" tab
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
+2. **Approve Users**
+   - Review user information
+   - Click "Approve" for valid requests
+   - User can now access system
 
-# Log usage
-logger.info(f"User {st.session_state.user_email} uploaded {audio_file.name}")
-logger.info(f"Processing time: {process_time:.2f}s")
-```
+3. **Manage Users**
+   - Monitor usage in "Usage Analytics"
+   - Revoke access if needed
+   - Export reports for compliance
 
 ---
 
-## Performance Optimization
+## ⚙️ Environment Configuration
 
-### Caching
+### Required Environment Variables
+
+| Variable | Description | Required | Example |
+|----------|-------------|----------|---------|
+| `GEMINI_API_KEY` | Google Gemini API key | Yes | `AIzaSy...` |
+| `ADMIN_EMAILS` | List of admin emails | Yes | `["admin@example.com"]` |
+| `MAX_FILE_SIZE_MB` | Max upload size | No | `50` |
+| `MAX_DURATION_MINUTES` | Max audio duration | No | `30` |
+| `DAILY_UPLOAD_LIMIT` | Uploads per user/day | No | `10` |
+| `USE_GPU` | Enable GPU acceleration | No | `false` |
+
+### Optional: Email Notifications
+
+To enable email notifications for access requests:
+
+```toml
+# Add to secrets.toml
+[email]
+SMTP_SERVER = "smtp.gmail.com"
+SMTP_PORT = 587
+SMTP_EMAIL = "noreply@dinosoft.rw"
+SMTP_PASSWORD = "your_app_password"
+```
+
+Update `admin_handler_enhanced.py` to send emails on approval/rejection.
+
+---
+
+## 🔧 Troubleshooting
+
+### Common Issues
+
+#### 1. Model Loading Fails
+```bash
+# SpeechBrain downloads model automatically on first run
+# Verify internet connection
+ping huggingface.co
+
+# Check disk space (model is ~400MB)
+df -h
+
+# If download fails, clear cache and retry:
+rm -rf pretrained_models/
+```
+
+#### 2. Audio Processing Errors
+```bash
+# Verify ffmpeg installation
+ffmpeg -version
+
+# Check audio file format
+ffprobe your_audio_file.mp3
+```
+
+#### 3. Gemini API Errors
+```bash
+# Test API key
+curl -H "Content-Type: application/json" \
+  -d '{"contents":[{"parts":[{"text":"test"}]}]}' \
+  "https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=YOUR_KEY"
+```
+
+#### 4. Database Permissions
+```bash
+# Ensure write permissions
+chmod 666 users_database.json
+chmod 666 pending_users.json
+chmod 666 usage_logs.json
+```
+
+#### 5. Streamlit Cloud Issues
+- Check app logs in Streamlit Cloud dashboard
+- Verify secrets are correctly configured
+- Ensure Python version is 3.10
+- Check resource limits (upgrade if needed)
+
+### Performance Optimization
+
 ```python
+# Cache model loading
 @st.cache_resource
 def load_transcriber():
     transcriber = KinyarwandaTranscriber()
     transcriber.load_model()
     return transcriber
 
-@st.cache_data
-def process_audio_cached(audio_path, chunk_duration):
-    return transcriber.transcribe_audio(audio_path, chunk_duration)
-```
-
-### Resource Limits
-```yaml
-# Cloud Run
---memory 2Gi
---cpu 2
---timeout 3600
---concurrency 10
---max-instances 5
+# Cache Gemini processor
+@st.cache_resource
+def load_gemini():
+    return GeminiProcessor()
 ```
 
 ---
 
-## Security Checklist
+## 📊 Monitoring & Maintenance
 
-- [ ] Secrets stored securely (not in code)
-- [ ] HTTPS enabled in production
-- [ ] OAuth configured with authorized domains
-- [ ] API rate limiting implemented
-- [ ] Input validation on file uploads
-- [ ] Session timeouts configured
-- [ ] CORS properly configured
-- [ ] Error messages don't leak sensitive info
-- [ ] Audit logging enabled
-- [ ] Regular dependency updates
+### Daily Tasks
+- Review pending access requests
+- Check usage analytics
+- Monitor error logs
 
----
+### Weekly Tasks
+- Export usage reports
+- Backup user database
+- Review system performance
 
-## Cost Optimization
-
-### Streamlit Cloud
-- Free tier: 1 app, community support
-- Team plan: $250/month (5 apps)
-
-### Google Cloud Run
-- Free tier: 2M requests/month
-- Estimated cost: $10-50/month for moderate use
-- Optimize: Use smaller instances, implement caching
-
-### API Costs
-- Gemini API: Free tier available
-- HuggingFace: Free for inference
-- Monitor quotas regularly
+### Monthly Tasks
+- Audit user access
+- Analyze usage patterns
+- Update documentation
+- Review API quotas
 
 ---
 
-## Troubleshooting
+## 🔒 Security Best Practices
 
-**Build failures**
-```bash
-# Check logs
-gcloud builds log $(gcloud builds list --limit=1 --format='value(id)')
-```
+1. **API Keys**
+   - Never commit secrets to git
+   - Rotate keys quarterly
+   - Use environment-specific keys
 
-**Memory issues**
-- Increase `--memory` flag
-- Implement audio chunking
-- Clear cache between runs
+2. **User Access**
+   - Review users monthly
+   - Revoke inactive accounts
+   - Monitor for abuse
 
-**Timeout errors**
-- Increase `--timeout`
-- Process audio in smaller chunks
-- Use async processing
+3. **Data Privacy**
+   - Don't log sensitive audio content
+   - Implement data retention policy
+   - Comply with GDPR/data regulations
 
-**OAuth redirect issues**
-- Verify redirect URI matches exactly
-- Check authorized domains in GCP console
-- Clear browser cookies
-
----
-
-## Support & Resources
-
-- Streamlit Docs: https://docs.streamlit.io
-- Cloud Run Docs: https://cloud.google.com/run/docs
-- Gemini API: https://ai.google.dev/docs
-- HuggingFace: https://huggingface.co/docs
+4. **System Security**
+   - Keep dependencies updated
+   - Enable HTTPS in production
+   - Implement rate limiting
+   - Log security events
 
 ---
 
-**Last Updated**: November 2025  
-**Maintained by**: DinoSoft Engineering Team
+## 📝 Support & Resources
+
+- **Documentation:** This guide
+- **Issues:** GitHub Issues
+- **Contact:** claude.nshime@dinosoft.rw
+- **Streamlit Docs:** https://docs.streamlit.io
+- **HuggingFace:** https://huggingface.co/docs
+- **Gemini API:** https://ai.google.dev/docs
+
+---
+
+## 🎯 Next Steps
+
+After successful deployment:
+
+1. ✅ Login as admin
+2. ✅ Test full transcription workflow
+3. ✅ Invite first focus group members
+4. ✅ Set up monitoring alerts
+5. ✅ Schedule regular backups
+6. ✅ Document internal procedures
+
+---
+
+**Last Updated:** November 2025  
+**Maintained by:** DinoSoft Engineering Team  
+**Version:** 2.0.0
